@@ -24,3 +24,202 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+/* ----- Article body (読みやすい行間・余白) ----- */
+.article-body{
+  line-height: 1.9;             /* 行間：ゆったり */
+  font-size: 1.0625rem;         /* 17px 相当：小さすぎない */
+  color: rgb(39 39 42);         /* zinc-800 */
+}
+
+@media (min-width: 768px){
+  .article-body{ font-size: 1.1rem; }  /* md 以降は少し大きめ */
+}
+
+/* 段落 */
+.article-body p{
+  margin: 1.1em 0;              /* 段落間の余白 */
+}
+
+/* 見出し（詰まり防止） */
+.article-body h2{
+  margin: 2.1em 0 0.8em;
+  line-height: 1.35;
+  font-weight: 800;
+}
+.article-body h3{
+  margin: 1.8em 0 0.6em;
+  line-height: 1.4;
+  font-weight: 700;
+}
+.article-body h4{
+  margin: 1.4em 0 0.5em;
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+/* リスト */
+.article-body ul,
+.article-body ol{
+  padding-left: 1.4rem;
+  margin: 1em 0;
+}
+.article-body li{ margin: .4em 0; }
+
+/* 引用 */
+.article-body blockquote{
+  border-left: 3px solid #e5e7eb;   /* gray-200 */
+  padding-left: 1rem;
+  margin: 1.2rem 0;
+  color: #374151;                    /* gray-700 */
+  background: rgba(0,0,0,.02);
+}
+
+/* 画像 */
+.article-body img{
+  display: block;
+  margin: 1.2rem auto;
+  border-radius: .5rem;
+}
+
+/* 表 */
+.article-body table{
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.25rem 0;
+  font-size: .98em;
+}
+.article-body th,
+.article-body td{
+  border: 1px solid #e5e7eb;
+  padding: .6rem .75rem;
+}
+.article-body th{
+  background: #f9fafb;
+  font-weight: 700;
+}
+
+/* コード */
+.article-body code{
+  background: rgba(0,0,0,.04);
+  padding: .1rem .3rem;
+  border-radius: .25rem;
+}
+
+/* ダークモードの調整 */
+:root.dark .article-body{ color: rgb(228 228 231); }                 /* zinc-200 */
+:root.dark .article-body blockquote{
+  border-left-color: rgba(255,255,255,.18);
+  color: rgba(255,255,255,.8);
+  background: rgba(255,255,255,.03);
+}
+:root.dark .article-body th,
+:root.dark .article-body td{ border-color: rgba(255,255,255,.18); }
+:root.dark .article-body th{ background: rgba(255,255,255,.06); }
+
+/* ====== MDX 本文の読みやすさ強化 ====== */
+
+.mdx-content {
+  /* 行間と横幅 */
+  line-height: 1.9;
+  max-width: 72ch;
+  margin-inline: auto;
+  color: rgb(17 24 39); /* gray-900 */
+}
+
+:root .mdx-content { color: rgb(17 24 39); }
+.dark .mdx-content { color: rgb(229 231 235); } /* gray-200 */
+
+/* 段落：塊ごとのゆとり（文の塊が見やすい） */
+.mdx-content p {
+  margin: 1.15rem 0;
+  text-wrap: pretty;
+}
+
+/* 段落が連続する時は少しだけ広めに */
+.mdx-content p + p { margin-top: 1.35rem; }
+
+/* 小見出し（###） */
+.mdx-content h3 {
+  margin-top: 2rem;
+  margin-bottom: .5rem;
+  font-weight: 700;
+  font-size: 1.125rem; /* text-lg */
+  line-height: 1.6;
+  display: inline-block;
+  padding: .25rem .5rem .25rem .75rem;
+  border-left: 4px solid rgb(59 130 246); /* blue-500 */
+  border-radius: .375rem;                 /* rounded-md */
+  background: rgba(59,130,246,.06);       /* 薄い背景 */
+}
+.dark .mdx-content h3 {
+  border-left-color: rgb(96 165 250);     /* blue-400 */
+  background: rgba(96,165,250,.12);
+}
+
+/* 大見出し（##） */
+.mdx-content h2 {
+  margin-top: 3rem;
+  margin-bottom: 1rem;
+  font-weight: 800;
+  font-size: 1.5rem;       /* text-2xl */
+  line-height: 1.5;
+}
+
+/* 箇条書きも読みやすく */
+.mdx-content ul, .mdx-content ol {
+  padding-left: 1.25rem;   /* listのインデント */
+  margin: 1rem 0;
+}
+.mdx-content li { margin: .35rem 0; }
+
+/* 引用（コラム風の囲み） */
+.mdx-content blockquote {
+  margin: 1.5rem 0;
+  padding: .75rem 1rem;
+  border-left: 4px solid rgb(148 163 184); /* slate-400 */
+  background: rgba(148,163,184,.12);
+  border-radius: .375rem;
+}
+.dark .mdx-content blockquote {
+  border-left-color: rgb(203 213 225); /* slate-300 */
+  background: rgba(203,213,225,.12);
+}
+
+/* 画像 */
+.mdx-content img, .mdx-content figure {
+  margin: 1.25rem auto;
+  border-radius: .5rem;
+  box-shadow: 0 5px 20px rgba(0,0,0,.08);
+  max-width: 100%;
+  height: auto;
+}
+.mdx-content figcaption {
+  margin-top: .5rem;
+  font-size: .875rem;       /* text-sm */
+  color: rgb(100 116 139);  /* slate-500 */
+  text-align: center;
+}
+.dark .mdx-content figcaption { color: rgb(148 163 184); }
+
+/* 表 */
+.mdx-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.25rem 0;
+  font-size: .95rem;
+}
+.mdx-content th, .mdx-content td {
+  border-bottom: 1px solid rgb(226 232 240); /* slate-200 */
+  padding: .6rem .75rem;
+}
+.dark .mdx-content th, .mdx-content td {
+  border-bottom-color: rgba(148,163,184,.35);
+}
+.mdx-content thead th {
+  background: rgba(59,130,246,.06);
+  font-weight: 700;
+}
+.dark .mdx-content thead th { background: rgba(96,165,250,.12); }
+
+/* 水平線は非表示（ご要望どおり棒線を出さない） */
+.mdx-content hr { display: none; }
