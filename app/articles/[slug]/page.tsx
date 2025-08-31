@@ -5,12 +5,13 @@ import Link from "next/link";
 import { MDXRemote } from "next-mdx-remote/rsc";
 
 import { getArticleBySlug, getArticleSlugs } from "@/lib/mdx";
+import { getHeadingsFromMdx } from "@/lib/toc";
 import { getWriterBySlug } from "@/lib/writers";
 import TOC from "./TOC";
 
 // ページのパラメータ型
 type Props = {
-  params: Promise<{ slug: string }>;
+  params: { slug: string };
 };
 
 // 静的パスを生成
@@ -21,18 +22,22 @@ export async function generateStaticParams() {
   }));
 }
 
-// 記事ページ
-export default async function ArticlePage({ params }: Props) {
-  const { slug } = await params; // 👈 await 必須
-  if (!slug || typeof slug !== "string") return notFound();
-
-  const article = getArticleBySlug(slug);
+export default function ArticlePage({ params }: Props) {
+  // 記事取得（存在しなければ 404）
+  const article = getArticleBySlug(params.slug);
   if (!article) return notFound();
 
-  const { title, date, author, cover, excerpt, content, headings, readMin } =
-    article;
+  // 型に無い項目は安全に取り扱う（headings はオプショナル扱い）
+  const { title, date, author, cover, excerpt, content, readMin } = article;
 
-  // ライター情報を取得
+  // 1) frontmatter に headings があればそれを使う
+  // 2) 無ければ本文 content から自動抽出
+  const headings =
+    (article as any).headings && Array.isArray((article as any).headings)
+      ? (article as any).headings
+      : getHeadingsFromMdx(content);
+
+  // ライター情報を取得（無ければ null）
   const writer = author ? getWriterBySlug(author as string) : null;
 
   return (
@@ -115,6 +120,7 @@ export default async function ArticlePage({ params }: Props) {
 
         {/* ===== サイドバー（TOC） ===== */}
         <aside className="md:col-span-1">
+          {/* headings は必ず配列（空配列含む）になるので型エラーになりません */}
           <TOC headings={headings} />
         </aside>
       </div>
