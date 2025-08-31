@@ -1,51 +1,57 @@
 // app/articles/[slug]/page.tsx
 import Image from "next/image";
-import { notFound } from "next/navigation";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { MDXRemote } from "next-mdx-remote/rsc";
 
-import { getArticleBySlug, getArticleSlugs } from "@/lib/mdx";
-import { getHeadingsFromMdx } from "@/lib/toc";
+import {
+  getArticleBySlug,
+  getArticleSlugs,
+  type Article,
+} from "@/lib/mdx";
+import { getHeadingsFromMdx, type Heading } from "@/lib/toc";
 import { getWriterBySlug } from "@/lib/writers";
-import TOC from "./TOC";
 
-// ページのパラメータ型
-type Props = {
-  params: { slug: string };
-};
+type Params = { slug: string };
 
-// 静的パスを生成
-export async function generateStaticParams() {
-  const slugs = getArticleSlugs();
-  return slugs.map((slug) => ({
-    slug: slug.replace(/\.mdx$/, ""),
-  }));
-}
+// Next.js 15 では Server Component で params が Promise の場合があるため、Promise を受けて await します
+export default async function ArticlePage({
+  params,
+}: {
+  params: Promise<Params> | Params;
+}) {
+  const resolved: Params = params instanceof Promise ? await params : params;
+  const slug: string | undefined = resolved?.slug;
 
-export default function ArticlePage({ params }: Props) {
-  // 記事取得（存在しなければ 404）
-  const article = getArticleBySlug(params.slug);
+  if (!slug) {
+    return notFound();
+  }
+
+  // 記事取得
+  const article: Article | null = (() => {
+    try {
+      return getArticleBySlug(slug);
+    } catch {
+      return null;
+    }
+  })();
+
   if (!article) return notFound();
 
-  // 型に無い項目は安全に取り扱う（headings はオプショナル扱い）
   const { title, date, author, cover, excerpt, content, readMin } = article;
 
-  // 1) frontmatter に headings があればそれを使う
-  // 2) 無ければ本文 content から自動抽出
-  const headings =
-    (article as any).headings && Array.isArray((article as any).headings)
-      ? (article as any).headings
-      : getHeadingsFromMdx(content);
+  // 見出しは本文から生成（ファイルに headings フロントマターが無くてもOK）
+  const headings: Heading[] = getHeadingsFromMdx(content);
 
-  // ライター情報を取得（無ければ null）
-  const writer = author ? getWriterBySlug(author as string) : null;
+  // ライター情報（author が無い場合は null）
+  const writer = author ? getWriterBySlug(author) : null;
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10">
-      {/* ===== 記事ヘッダー ===== */}
+      {/* ===== ヘッダー ===== */}
       <header className="mb-6 border-b pb-6">
         <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
-          <time>{new Date(date).toLocaleDateString()}</time>
+          <time>{new Date(date).toLocaleDateString("ja-JP")}</time>
           {typeof readMin === "number" && <span>・{readMin}分</span>}
         </div>
         <h1 className="mt-2 text-3xl font-bold">{title}</h1>
@@ -53,26 +59,26 @@ export default function ArticlePage({ params }: Props) {
       </header>
 
       <div className="grid grid-cols-1 gap-10 md:grid-cols-4">
-        {/* ===== 本文エリア ===== */}
+        {/* ===== 本文 ===== */}
         <article className="md:col-span-3">
           {cover && (
             <div className="mb-6">
               <Image
                 src={cover}
                 alt={title}
-                width={800}
-                height={450}
+                width={1200}
+                height={630}
                 className="rounded-lg"
+                priority
               />
             </div>
           )}
 
-          {/* MDX本文 */}
           <div className="prose prose-lg mdx-content dark:prose-invert">
             <MDXRemote source={content} />
           </div>
 
-          {/* ===== ライタープロフィール ===== */}
+          {/* ライター */}
           {writer && (
             <div className="mt-12 rounded-lg border bg-gray-50 p-6 dark:border-gray-700 dark:bg-gray-900/50">
               <div className="flex items-center gap-4">
@@ -85,12 +91,13 @@ export default function ArticlePage({ params }: Props) {
                 />
                 <div>
                   <h3 className="text-lg font-bold">{writer.name}</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {writer.bio}
-                  </p>
-                  {writer.sns && (
+                  {writer.bio && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{writer.bio}</p>
+                  )}
+
+                  {(writer.sns?.x || writer.sns?.instagram) && (
                     <div className="mt-2 flex gap-3">
-                      {writer.sns.x && (
+                      {writer.sns?.x && (
                         <Link
                           href={writer.sns.x}
                           target="_blank"
@@ -100,7 +107,7 @@ export default function ArticlePage({ params }: Props) {
                           X
                         </Link>
                       )}
-                      {writer.sns.instagram && (
+                      {writer.sns?.instagram && (
                         <Link
                           href={writer.sns.instagram}
                           target="_blank"
@@ -118,12 +125,29 @@ export default function ArticlePage({ params }: Props) {
           )}
         </article>
 
-        {/* ===== サイドバー（TOC） ===== */}
+        {/* ===== 目次（TOC） ===== */}
         <aside className="md:col-span-1">
-          {/* headings は必ず配列（空配列含む）になるので型エラーになりません */}
-          <TOC headings={headings} />
+          <nav className="sticky top-24 space-y-2">
+            <p className="mb-2 text-sm font-semibold text-gray-500">目次</p>
+            <ul className="space-y-1 text-sm">
+              {headings.map((h: Heading) => (
+                <li key={`${h.depth}-${h.slug}`} className={h.depth > 2 ? "pl-3" : ""}>
+                  <a href={`#${h.slug}`} className="hover:underline">
+                    {h.text}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
         </aside>
       </div>
     </main>
   );
+}
+
+// SSG（ビルド時プリレンダリング）
+export async function generateStaticParams(): Promise<Array<{ slug: string }>> {
+  return getArticleSlugs().map((file) => ({
+    slug: file.replace(/\.mdx$/, ""),
+  }));
 }
