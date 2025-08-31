@@ -7,7 +7,7 @@ import matter from "gray-matter";
 export type ArticleMeta = {
   title: string;
   slug: string;
-  date: string;                 // YYYY-MM-DD など文字列想定
+  date: string; // YYYY-MM-DD など文字列想定
   author: string;
   readMin: number;
 
@@ -16,13 +16,13 @@ export type ArticleMeta = {
   teams?: string[];
   tags?: string[];
 
-  /** ★ 追加: カテゴリ（例: "kanto-taikosen"） */
+  /** カテゴリ（例: "kanto-taikosen"） */
   category?: string;
 
-  /** ★ 追加: 試合で束ねたいときのID（任意） */
+  /** 試合で束ねたいときのID（任意） */
   matchId?: string;
 
-  /** ランキング等で任意に使う閲覧数 */
+  /** 任意：ランキング等で使う閲覧数 */
   views?: number;
 };
 
@@ -31,7 +31,7 @@ export type Article = ArticleMeta & { content: string };
 
 const ARTICLES_DIR = path.join(process.cwd(), "content", "articles");
 
-function existsArticlesDir() {
+function existsArticlesDir(): boolean {
   try {
     return fs.existsSync(ARTICLES_DIR);
   } catch {
@@ -41,44 +41,59 @@ function existsArticlesDir() {
 
 export function getArticleSlugs(): string[] {
   if (!existsArticlesDir()) return [];
-  return fs
-    .readdirSync(ARTICLES_DIR)
-    .filter((f) => f.toLowerCase().endsWith(".mdx"));
+  return fs.readdirSync(ARTICLES_DIR).filter((f) => f.toLowerCase().endsWith(".mdx"));
 }
 
-function readMdx(file: string) {
+function readMdx(file: string): { data: unknown; content: string } {
   const fullPath = path.join(ARTICLES_DIR, file);
   const fileStr = fs.readFileSync(fullPath, "utf8");
   const { data, content } = matter(fileStr);
   return { data, content };
 }
 
-function toMeta(raw: any): ArticleMeta | null {
-  if (!raw?.slug || !raw?.title) return null;
+/** gray-matter の data を安全に ArticleMeta に落とす */
+function toMeta(raw: unknown): ArticleMeta | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const r = raw as Record<string, unknown>;
 
-  const category =
-    typeof raw.category === "string" ? String(raw.category) : undefined;
+  const getStr = (k: string): string | undefined =>
+    typeof r[k] === "string" ? (r[k] as string) : undefined;
 
-  const matchId =
-    typeof raw.matchId === "string" ? String(raw.matchId) : undefined;
+  const getNum = (k: string): number | undefined => {
+    const v = r[k];
+    if (typeof v === "number") return v;
+    if (typeof v === "string" && v.trim() !== "" && !Number.isNaN(Number(v))) {
+      return Number(v);
+    }
+    return undefined;
+  };
+
+  const getStrArr = (k: string): string[] | undefined => {
+    const v = r[k];
+    if (!Array.isArray(v)) return undefined;
+    const arr = v.filter((x) => typeof x === "string") as string[];
+    return arr.length ? arr : undefined;
+  };
+
+  const slug = getStr("slug");
+  const title = getStr("title");
+  if (!slug || !title) return null;
 
   return {
-    title: String(raw.title ?? ""),
-    slug: String(raw.slug),
-    date: String(raw.date ?? ""),
-    author: String(raw.author ?? ""),
-    readMin: Number(raw.readMin ?? 0),
+    title,
+    slug,
+    date: getStr("date") ?? "",
+    author: getStr("author") ?? "",
+    readMin: getNum("readMin") ?? 0,
 
-    cover: raw.cover,
-    excerpt: raw.excerpt,
-    teams: Array.isArray(raw.teams) ? raw.teams : undefined,
-    tags: Array.isArray(raw.tags) ? raw.tags : undefined,
+    cover: getStr("cover"),
+    excerpt: getStr("excerpt"),
+    teams: getStrArr("teams"),
+    tags: getStrArr("tags"),
 
-    // ★ ここで frontmatter から通す
-    category,
-    matchId,
-
-    views: typeof raw.views === "number" ? raw.views : undefined,
+    category: getStr("category"),
+    matchId: getStr("matchId"),
+    views: getNum("views"),
   };
 }
 
@@ -102,9 +117,7 @@ export function getArticleBySlug(slug?: string): Article | null {
   return null;
 }
 
-/**
- * 一覧用メタデータ（欠落を弾きつつ日付降順）
- */
+/** 一覧用メタデータ（欠落を弾きつつ日付降順） */
 export function getAllArticles(): ArticleMeta[] {
   const list = getArticleSlugs()
     .map((file) => {
@@ -124,7 +137,7 @@ export function getAllArticles(): ArticleMeta[] {
 /** ランキング等（views 降順 → 無ければ日付降順） */
 export type ArticleForRanking = Pick<ArticleMeta, "slug" | "title" | "date" | "views">;
 
-function score(a: ArticleForRanking) {
+function score(a: ArticleForRanking): number {
   if (typeof a.views === "number") return a.views;
   return new Date(a.date).getTime() || 0;
 }
