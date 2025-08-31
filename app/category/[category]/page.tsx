@@ -2,25 +2,35 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getAllArticles, type Article } from "@/lib/mdx";
+
+import { getAllArticles, type ArticleMeta } from "@/lib/mdx";
 import { CATEGORIES, type CategorySlug } from "@/lib/categories";
 
 type Params = { category: CategorySlug };
 
-export default function CategoryPage({ params }: { params: Params }) {
-  const { category } = params;
+export default async function CategoryPage({
+  params,
+}: {
+  params: Promise<Params> | Params;
+}) {
+  const resolved = params instanceof Promise ? await params : params;
+  const category = resolved?.category;
+  if (!category) return notFound();
+
   const cat = CATEGORIES.find((c) => c.slug === category);
   if (!cat) return notFound();
 
-  // MDX frontmatter の category が一致する記事
-  const articles: Article[] = getAllArticles().filter(
-    (a) => (a as any).category === category
+  // MDX frontmatter の category で絞り込み
+  const articles: ArticleMeta[] = getAllArticles().filter(
+    (a) => a.category === category
   );
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10">
       <header className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-extrabold">{cat.label} の記事</h1>
+        <h1 className="text-2xl md:text-3xl font-extrabold">
+          {cat.label} の記事
+        </h1>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
           {articles.length} 本
         </p>
@@ -31,7 +41,10 @@ export default function CategoryPage({ params }: { params: Params }) {
       ) : (
         <ul className="grid gap-6 sm:grid-cols-2">
           {articles.map((a) => (
-            <li key={a.slug} className="overflow-hidden rounded-2xl border hover:shadow-md transition">
+            <li
+              key={a.slug}
+              className="overflow-hidden rounded-2xl border hover:shadow-md transition"
+            >
               <Link href={`/articles/${a.slug}`} className="block">
                 {a.cover && (
                   <div className="relative h-44 w-full">
@@ -51,7 +64,9 @@ export default function CategoryPage({ params }: { params: Params }) {
                   </div>
                   <h3 className="mt-1 font-semibold leading-snug">{a.title}</h3>
                   {a.excerpt && (
-                    <p className="mt-1 text-sm text-gray-600 line-clamp-2">{a.excerpt}</p>
+                    <p className="mt-1 text-sm text-gray-600 line-clamp-2">
+                      {a.excerpt}
+                    </p>
                   )}
                 </div>
               </Link>
@@ -64,6 +79,8 @@ export default function CategoryPage({ params }: { params: Params }) {
 }
 
 // すべてのカテゴリで SSG
-export async function generateStaticParams() {
+export async function generateStaticParams(): Promise<
+  Array<{ category: CategorySlug }>
+> {
   return CATEGORIES.map((c) => ({ category: c.slug }));
 }
