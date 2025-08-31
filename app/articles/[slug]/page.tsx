@@ -9,12 +9,30 @@ import {
   getArticleSlugs,
   type Article,
 } from "@/lib/mdx";
-import { getHeadingsFromMdx, type Heading } from "@/lib/toc";
+// Heading 型は使わない（ライブラリ差異を吸収）
+import { getHeadingsFromMdx } from "@/lib/toc";
 import { getWriterBySlug } from "@/lib/writers";
 
 type Params = { slug: string };
 
-// Next.js 15 では Server Component で params が Promise の場合があるため、Promise を受けて await します
+// toc 返却値の差異を吸収する安全な型
+type TOCHeading = {
+  depth: number;
+  text: string;
+  slug?: string;
+  id?: string;
+  href?: string;
+};
+
+// text から slug を作るフォールバック
+function slugify(text: string): string {
+  return text.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-");
+}
+function toAnchor(h: TOCHeading): string {
+  return h.slug ?? h.id ?? (h.href ? h.href.replace(/^#/, "") : slugify(h.text));
+}
+
+// Next.js 15: params が Promise の場合に対応
 export default async function ArticlePage({
   params,
 }: {
@@ -23,9 +41,7 @@ export default async function ArticlePage({
   const resolved: Params = params instanceof Promise ? await params : params;
   const slug: string | undefined = resolved?.slug;
 
-  if (!slug) {
-    return notFound();
-  }
+  if (!slug) return notFound();
 
   // 記事取得
   const article: Article | null = (() => {
@@ -35,20 +51,18 @@ export default async function ArticlePage({
       return null;
     }
   })();
-
   if (!article) return notFound();
 
   const { title, date, author, cover, excerpt, content, readMin } = article;
 
-  // 見出しは本文から生成（ファイルに headings フロントマターが無くてもOK）
-  const headings: Heading[] = getHeadingsFromMdx(content);
+  // 見出し生成（型差異はここで吸収）
+  const headings = getHeadingsFromMdx(content) as TOCHeading[];
 
-  // ライター情報（author が無い場合は null）
+  // ライター情報
   const writer = author ? getWriterBySlug(author) : null;
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10">
-      {/* ===== ヘッダー ===== */}
       <header className="mb-6 border-b pb-6">
         <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
           <time>{new Date(date).toLocaleDateString("ja-JP")}</time>
@@ -59,7 +73,6 @@ export default async function ArticlePage({
       </header>
 
       <div className="grid grid-cols-1 gap-10 md:grid-cols-4">
-        {/* ===== 本文 ===== */}
         <article className="md:col-span-3">
           {cover && (
             <div className="mb-6">
@@ -78,7 +91,6 @@ export default async function ArticlePage({
             <MDXRemote source={content} />
           </div>
 
-          {/* ライター */}
           {writer && (
             <div className="mt-12 rounded-lg border bg-gray-50 p-6 dark:border-gray-700 dark:bg-gray-900/50">
               <div className="flex items-center gap-4">
@@ -94,7 +106,6 @@ export default async function ArticlePage({
                   {writer.bio && (
                     <p className="text-sm text-gray-600 dark:text-gray-400">{writer.bio}</p>
                   )}
-
                   {(writer.sns?.x || writer.sns?.instagram) && (
                     <div className="mt-2 flex gap-3">
                       {writer.sns?.x && (
@@ -125,18 +136,20 @@ export default async function ArticlePage({
           )}
         </article>
 
-        {/* ===== 目次（TOC） ===== */}
         <aside className="md:col-span-1">
           <nav className="sticky top-24 space-y-2">
             <p className="mb-2 text-sm font-semibold text-gray-500">目次</p>
             <ul className="space-y-1 text-sm">
-              {headings.map((h: Heading) => (
-                <li key={`${h.depth}-${h.slug}`} className={h.depth > 2 ? "pl-3" : ""}>
-                  <a href={`#${h.slug}`} className="hover:underline">
-                    {h.text}
-                  </a>
-                </li>
-              ))}
+              {headings.map((h: TOCHeading) => {
+                const anchor = toAnchor(h);
+                return (
+                  <li key={`${h.depth}-${anchor}`} className={h.depth > 2 ? "pl-3" : ""}>
+                    <a href={`#${anchor}`} className="hover:underline">
+                      {h.text}
+                    </a>
+                  </li>
+                );
+              })}
             </ul>
           </nav>
         </aside>
@@ -145,7 +158,6 @@ export default async function ArticlePage({
   );
 }
 
-// SSG（ビルド時プリレンダリング）
 export async function generateStaticParams(): Promise<Array<{ slug: string }>> {
   return getArticleSlugs().map((file) => ({
     slug: file.replace(/\.mdx$/, ""),
