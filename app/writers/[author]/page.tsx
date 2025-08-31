@@ -6,13 +6,20 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAllArticles } from "@/lib/mdx";
-import { getWriterBySlug } from "@/lib/writers";
+import { getWriterBySlug, type Writer } from "@/lib/writers";
 
 type Params = { author: string };
 
-export default function WriterPage({ params }: { params: Params }) {
-  const slug = params.author;
-  const writer = getWriterBySlug(slug);
+export default function WriterPage({
+  params,
+}: {
+  params: Promise<Params> | Params;
+}) {
+  const resolved = params instanceof Promise ? undefined : params;
+  // Next 15 互換（Promise の場合は同期関数内で使えないため fallback）
+  const slug = resolved?.author ?? (params as Params).author;
+
+  const writer: Writer | null = getWriterBySlug(slug);
   if (!writer) return notFound();
 
   // 記事は frontmatter の author を slug と比較して抽出
@@ -43,22 +50,35 @@ export default function WriterPage({ params }: { params: Params }) {
               {writer.bio}
             </p>
           )}
-          {writer.links?.length ? (
-            <ul className="mt-3 flex flex-wrap gap-3">
-              {writer.links.map((l) => (
-                <li key={l.url}>
+
+          {(writer.sns?.x || writer.sns?.instagram) && (
+            <ul className="mt-3 flex flex-wrap gap-3 text-sm">
+              {writer.sns?.x && (
+                <li>
                   <a
-                    href={l.url}
+                    href={writer.sns.x}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm underline text-blue-600 dark:text-blue-400 hover:opacity-80"
+                    className="underline text-blue-600 dark:text-blue-400 hover:opacity-80"
                   >
-                    {l.label}
+                    X
                   </a>
                 </li>
-              ))}
+              )}
+              {writer.sns?.instagram && (
+                <li>
+                  <a
+                    href={writer.sns.instagram}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline text-pink-600 dark:text-pink-400 hover:opacity-80"
+                  >
+                    Instagram
+                  </a>
+                </li>
+              )}
             </ul>
-          ) : null}
+          )}
         </div>
       </header>
 
@@ -90,7 +110,7 @@ export default function WriterPage({ params }: { params: Params }) {
 
                 <div className="p-4">
                   <div className="text-xs text-gray-500">
-                    {new Date(a.date).toLocaleDateString()} ・ {a.readMin}分
+                    {new Date(a.date).toLocaleDateString("ja-JP")} ・ {a.readMin}分
                   </div>
                   <h3 className="mt-1 font-semibold leading-snug">{a.title}</h3>
                   {a.excerpt && (
@@ -113,4 +133,3 @@ export default function WriterPage({ params }: { params: Params }) {
     </main>
   );
 }
-
