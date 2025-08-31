@@ -9,13 +9,11 @@ import {
   getArticleSlugs,
   type Article,
 } from "@/lib/mdx";
-// Heading 型は使わない（ライブラリ差異を吸収）
 import { getHeadingsFromMdx } from "@/lib/toc";
 import { getWriterBySlug } from "@/lib/writers";
 
 type Params = { slug: string };
 
-// toc 返却値の差異を吸収する安全な型
 type TOCHeading = {
   depth: number;
   text: string;
@@ -24,7 +22,6 @@ type TOCHeading = {
   href?: string;
 };
 
-// text から slug を作るフォールバック
 function slugify(text: string): string {
   return text.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-");
 }
@@ -32,7 +29,6 @@ function toAnchor(h: TOCHeading): string {
   return h.slug ?? h.id ?? (h.href ? h.href.replace(/^#/, "") : slugify(h.text));
 }
 
-// Next.js 15: params が Promise の場合に対応
 export default async function ArticlePage({
   params,
 }: {
@@ -43,7 +39,6 @@ export default async function ArticlePage({
 
   if (!slug) return notFound();
 
-  // 記事取得
   const article: Article | null = (() => {
     try {
       return getArticleBySlug(slug);
@@ -55,10 +50,8 @@ export default async function ArticlePage({
 
   const { title, date, author, cover, excerpt, content, readMin } = article;
 
-  // 見出し生成（型差異はここで吸収）
   const headings = getHeadingsFromMdx(content) as TOCHeading[];
 
-  // ライター情報
   const writer = author ? getWriterBySlug(author) : null;
 
   return (
@@ -140,10 +133,10 @@ export default async function ArticlePage({
           <nav className="sticky top-24 space-y-2">
             <p className="mb-2 text-sm font-semibold text-gray-500">目次</p>
             <ul className="space-y-1 text-sm">
-              {headings.map((h: TOCHeading) => {
+              {headings.map((h: TOCHeading, i: number) => {
                 const anchor = toAnchor(h);
                 return (
-                  <li key={`${h.depth}-${anchor}`} className={h.depth > 2 ? "pl-3" : ""}>
+                  <li key={`${h.depth}-${anchor}-${i}`} className={h.depth > 2 ? "pl-3" : ""}>
                     <a href={`#${anchor}`} className="hover:underline">
                       {h.text}
                     </a>

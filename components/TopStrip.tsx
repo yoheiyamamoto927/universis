@@ -1,4 +1,6 @@
-import Image from "next/image"
+import Image from "next/image";
+import Link from "next/link";
+import { CATEGORIES } from "@/lib/categories";
 
 export default function TopStrip() {
   return (
@@ -11,27 +13,27 @@ export default function TopStrip() {
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2">
         {/* 左側: ロゴ */}
         <div className="flex items-center space-x-2">
-          <Image
-            src="/images/logo.png"  // public/images/logo.png を置いてください
-            alt="Universis Logo"
-            width={120}
-            height={40}
-            className="rounded"
-          />
-          <span className="text-lg font-bold">UNIVERSIS</span>
+          <Link href="/" aria-label="ホームへ">
+            <div className="flex items-center space-x-2 hover:opacity-80 transition">
+              <Image
+                src="/images/logo.png"
+                alt="Universis Logo"
+                width={120}
+                height={40}
+                className="rounded"
+              />
+              <span className="text-lg font-bold">UNIVERSIS</span>
+            </div>
+          </Link>
         </div>
 
-        {/* 中央: ナビゲーション */}
+        {/* 中央: ナビゲーション（カテゴリへリンク） */}
         <nav className="hidden md:flex space-x-6 text-sm font-medium">
-          <a href="#" className="hover:underline">関東大学対抗戦</a>
-          <a href="#" className="hover:underline">関東大学リーグ戦</a>
-          <a href="#" className="hover:underline">関西大学リーグ</a>
-          <a href="#" className="hover:underline">日本代表</a>
-          <a href="#" className="hover:underline">海外</a>
-          <a href="#" className="hover:underline">セブンズ</a>
-          <a href="#" className="hover:underline">女子</a>
-          <a href="#" className="hover:underline">コラム</a>
-          <a href="#" className="hover:underline">その他</a>
+          {CATEGORIES.map((c) => (
+            <Link key={c.slug} href={`/category/${c.slug}`} className="hover:underline">
+              {c.label}
+            </Link>
+          ))}
         </nav>
 
         {/* 右側: 検索バー */}
@@ -44,5 +46,5 @@ export default function TopStrip() {
         </div>
       </div>
     </div>
-  )
+  );
 }
